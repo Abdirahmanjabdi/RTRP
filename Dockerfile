@@ -1,31 +1,32 @@
-# Stage 1: Builder
+# --- Stage 1: Builder ---
 FROM python:3.12-slim AS builder
-# Set the working directory
+
 WORKDIR /app
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-build-essential \
-&& rm -rf /var/lib/apt/lists/*
-# Copy the requirements file and install dependencies
+
+# Note: build-essential removed per #2. FastAPI/Uvicorn/Pydantic ship 
+# precompiled wheels for python:3.12-slim, so compilers aren't needed.
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --target=/app/deps -r requirements.txt
 
-# Stage 2: Final image
+
+# --- Stage 2: Runtime ---
 FROM python:3.12-slim AS runtime
-# Set the working directory
+
 WORKDIR /app
-# Copy the installed dependencies from the builder stage
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-# Copy the application code
-COPY . .
 
-#change the owner of the application files to a non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app
+# 1. Create the non-root user first so we can reference it in --chown
+RUN useradd -m -u 10001 appuser
 
-# Switch to the non-root user
+# 2. Copy installed python dependencies with correct ownership set at copy time (#1)
+COPY --from=builder --chown=appuser:appuser /app/deps /usr/local/lib/python3.12/site-packages
+
+# 3. Copy only the specific application source code required to run (#3)
+COPY --chown=appuser:appuser main.py .
+
+# 4. Switch to the non-root user
 USER appuser
 
-# Expose the port the app runs on
 EXPOSE 8000
 
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
