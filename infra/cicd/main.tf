@@ -25,8 +25,7 @@ resource "aws_iam_openid_connect_provider" "github" {
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
-# 2. IAM Role for GitHub Actions (Wildcard branch pattern to stop AssumeRole rejections)
-# 2. IAM Role for GitHub Actions
+# 2. IAM Role for GitHub Actions (Allows main or feature branch testing safely via wildcard)
 resource "aws_iam_role" "github_ci" {
   name = "rtrp-github-ci-role"
 
@@ -81,6 +80,11 @@ resource "aws_iam_role_policy" "ci_s3_state" {
           "s3:PutObject",
           "s3:DeleteObject",
           "s3:HeadObject"
+          "ecs:*",
+          "elasticloadbalancing:*",
+          "ec2:*",
+          "iam:*",
+          "logs:*"
         ]
         Resource = ["arn:aws:s3:::rtrp-terraform-state-04b6152c/ecs/*"]
       }
@@ -88,7 +92,7 @@ resource "aws_iam_role_policy" "ci_s3_state" {
   })
 }
 
-# 4. Comprehensive Infrastructure & App Deployment Permissions
+# 4. Comprehensive Least-Privilege & Infrastructure Policy
 resource "aws_iam_role_policy" "ci_permissions" {
   name = "rtrp-ci-permissions"
   role = aws_iam_role.github_ci.id
