@@ -26,6 +26,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 # 2. IAM Role for GitHub Actions (Wildcard branch pattern to stop AssumeRole rejections)
+# 2. IAM Role for GitHub Actions
 resource "aws_iam_role" "github_ci" {
   name = "rtrp-github-ci-role"
 
@@ -43,7 +44,11 @@ resource "aws_iam_role" "github_ci" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:Abdirahmanjabdi/RTRP:ref:refs/heads/*"
+            # ADD BOTH CONDITIONS HERE AS A LIST:
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:Abdirahmanjabdi/RTRP:ref:refs/heads/*",
+              "repo:Abdirahmanjabdi/RTRP:environment:production-infra"
+            ]
           }
         }
       }
