@@ -76,6 +76,11 @@ resource "aws_iam_role_policy" "ci_s3_state" {
           "s3:PutObject",
           "s3:DeleteObject",
           "s3:HeadObject"
+          "ecs:*",
+          "elasticloadbalancing:*",
+          "ec2:*",
+          "iam:*",
+          "logs:*"
         ]
         Resource = ["arn:aws:s3:::rtrp-terraform-state-04b6152c/ecs/*"]
       }
