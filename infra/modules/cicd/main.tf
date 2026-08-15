@@ -88,7 +88,7 @@ resource "aws_iam_role_policy" "ci_permissions" {
 
       {
         Effect   = "Allow"
-        Action   = ["ecr:CreateRepository"]
+        Action   = ["ecr:CreateRepository", "ecr:TagResource", "ecr:UntagResource"]
         Resource = "*"
       },
       {
@@ -144,7 +144,10 @@ resource "aws_iam_role_policy" "ci_permissions" {
           "ecr:GetRepositoryPolicy",
           "ecr:ListTagsForResource"
         ]
-        Resource = [ "*" ]
+        Resource = [
+          "arn:aws:ecr:eu-north-1:026703081738:repository/rtrp-trade-api",
+          "arn:aws:ecr:eu-north-1:026703081738:repository/rtrp-risk-engine"
+        ]
       },
       {
         Effect = "Allow"
