@@ -97,6 +97,18 @@ resource "aws_iam_role_policy" "ci_permissions" {
         Action   = ["rds:*"]
         Resource = "*"
       },
+
+      {
+        Effect   = "Allow"
+        Action   = ["rds:*"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = ["elasticache:*"]
+        Resource = "*"
+      },
+
       {
         Effect = "Allow"
         Action = ["elasticache:*"]
