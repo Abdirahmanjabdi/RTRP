@@ -97,7 +97,8 @@ None of that exists yet, but none of it needs a redesign either.
 
 ## Architecture
 
-<img width="4096" height="1442" alt="image" src="https://github.com/user-attachments/assets/8203e626-3c1a-4e60-a173-8c42f5653532" />
+<img width="3182" height="1861" alt="image" src="https://github.com/user-attachments/assets/ccfd4a97-820b-42f6-9ca1-d121260cb014" />
+
 
 
 Three path types run through this system, colour-coded in the diagram: the
