@@ -141,7 +141,7 @@ A few things worth pointing out that aren't obvious from the boxes alone:
 
 ### M1 baseline
 
-<img width="4096" height="3130" alt="image" src="https://github.com/user-attachments/assets/4ed86cd4-216d-4587-976c-04554dd3a666" />
+<img width="2302" height="1551" alt="image" src="https://github.com/user-attachments/assets/84f07385-fc47-4ec5-814d-9d2119815f66" />
 
 
 
