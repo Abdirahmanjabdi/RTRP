@@ -99,8 +99,8 @@ resource "aws_iam_role_policy" "ci_permissions" {
         Resource = "*"
       },
       {
-        Effect = "Allow"
-        Action = ["elasticache:*"]
+        Effect   = "Allow"
+        Action   = ["elasticache:*"]
         Resource = "*"
       },
 
@@ -165,7 +165,8 @@ resource "aws_iam_role_policy" "ci_permissions" {
         Action = [
           "ecr:DescribeRepositories",
           "ecr:GetRepositoryPolicy",
-          "ecr:ListTagsForResource"
+          "ecr:ListTagsForResource",
+          "ecr:DeleteRepository"
         ]
         Resource = [
           "arn:aws:ecr:eu-north-1:026703081738:repository/rtrp-trade-api",
@@ -183,7 +184,8 @@ resource "aws_iam_role_policy" "ci_permissions" {
           "route53:ListResourceRecordSets",
           "route53:ChangeResourceRecordSets",
           "route53:ListTagsForResource",
-          "route53:GetChange"
+          "route53:GetChange",
+          "route53:DeleteHostedZone"
         ]
         Resource = [
           "arn:aws:route53:::hostedzone/*",
@@ -196,7 +198,8 @@ resource "aws_iam_role_policy" "ci_permissions" {
           "acm:DescribeCertificate",
           "acm:ListTagsForCertificate",
           "acm:RequestCertificate",
-          "acm:AddTagsToCertificate"
+          "acm:AddTagsToCertificate",
+          "acm:DeleteCertificate"
         ]
         Resource = "*"
       },
@@ -206,7 +209,7 @@ resource "aws_iam_role_policy" "ci_permissions" {
         Resource = "*"
       },
 
-     {
+      {
         Effect   = "Allow"
         Action   = ["servicediscovery:*"]
         Resource = "*"
