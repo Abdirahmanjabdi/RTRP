@@ -34,6 +34,6 @@ module "dns" {
 
   domain_name        = var.domain_name
   subdomain_name     = var.subdomain_name
-  alb_dns_name       = data.terraform_remote_state.ecs.outputs.alb_dns_name
-  alb_hosted_zone_id = data.terraform_remote_state.ecs.outputs.alb_hosted_zone_id
+  alb_dns_name       = try(data.terraform_remote_state.ecs.outputs.alb_dns_name, "placeholder-destroyed.elb.amazonaws.com")
+  alb_hosted_zone_id = try(data.terraform_remote_state.ecs.outputs.alb_hosted_zone_id, "Z23TAZ6LKFMNIO")
 }

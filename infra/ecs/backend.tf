@@ -68,23 +68,23 @@ data "terraform_remote_state" "alerting" {
 module "ecs" {
   source = "../modules/ecs"
 
-  aws_region          = var.aws_region
-  project_name        = var.project_name
-  vpc_id              = data.terraform_remote_state.vpc.outputs.vpc_id
-  public_subnet_ids   = data.terraform_remote_state.vpc.outputs.public_subnet_ids
-  private_subnet_ids  = data.terraform_remote_state.vpc.outputs.private_subnet_ids
+  aws_region         = var.aws_region
+  project_name       = var.project_name
+  vpc_id             = data.terraform_remote_state.vpc.outputs.vpc_id
+  public_subnet_ids  = data.terraform_remote_state.vpc.outputs.public_subnet_ids
+  private_subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids
 
-  rabbitmq_amqps_endpoint         = data.terraform_remote_state.messaging.outputs.amqps_endpoint
-  rabbitmq_credentials_secret_arn = data.terraform_remote_state.messaging.outputs.credentials_secret_arn
+  rabbitmq_amqps_endpoint         = try(data.terraform_remote_state.messaging.outputs.amqps_endpoint, "amqps://placeholder-destroyed:5671")
+  rabbitmq_credentials_secret_arn = try(data.terraform_remote_state.messaging.outputs.credentials_secret_arn, "arn:aws:secretsmanager:eu-north-1:026703081738:secret:placeholder-destroyed")
 
-  postgres_host                   = split(":", data.terraform_remote_state.database.outputs.endpoint)[0]
-  postgres_port                   = split(":", data.terraform_remote_state.database.outputs.endpoint)[1]
-  postgres_db                     = data.terraform_remote_state.database.outputs.db_name
-  postgres_credentials_secret_arn = data.terraform_remote_state.database.outputs.credentials_secret_arn
+  postgres_host                   = try(split(":", data.terraform_remote_state.database.outputs.endpoint)[0], "placeholder-destroyed")
+  postgres_port                   = try(split(":", data.terraform_remote_state.database.outputs.endpoint)[1], "5432")
+  postgres_db                     = try(data.terraform_remote_state.database.outputs.db_name, "placeholder-destroyed")
+  postgres_credentials_secret_arn = try(data.terraform_remote_state.database.outputs.credentials_secret_arn, "arn:aws:secretsmanager:eu-north-1:026703081738:secret:placeholder-destroyed")
 
-  redis_host                  = data.terraform_remote_state.cache.outputs.primary_endpoint
-  redis_port                  = data.terraform_remote_state.cache.outputs.port
-  redis_auth_token_secret_arn = data.terraform_remote_state.cache.outputs.auth_token_secret_arn
+  redis_host                  = try(data.terraform_remote_state.cache.outputs.primary_endpoint, "placeholder-destroyed")
+  redis_port                  = try(data.terraform_remote_state.cache.outputs.port, "6379")
+  redis_auth_token_secret_arn = try(data.terraform_remote_state.cache.outputs.auth_token_secret_arn, "arn:aws:secretsmanager:eu-north-1:026703081738:secret:placeholder-destroyed")
 
-  sns_topic_arn = data.terraform_remote_state.alerting.outputs.topic_arn
+  sns_topic_arn = try(data.terraform_remote_state.alerting.outputs.topic_arn, "arn:aws:sns:eu-north-1:026703081738:placeholder-destroyed")
 }

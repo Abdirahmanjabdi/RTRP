@@ -50,9 +50,9 @@ module "messaging" {
   vpc_id             = data.terraform_remote_state.vpc.outputs.vpc_id
   private_subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids
 
-  ecs_tasks_security_group_id   = data.terraform_remote_state.ecs.outputs.ecs_tasks_security_group_id
-  risk_engine_security_group_id = data.terraform_remote_state.ecs.outputs.risk_engine_security_group_id
+  ecs_tasks_security_group_id   = try(data.terraform_remote_state.ecs.outputs.ecs_tasks_security_group_id, "sg-00000000000000000")
+  risk_engine_security_group_id = try(data.terraform_remote_state.ecs.outputs.risk_engine_security_group_id, "sg-00000000000000000")
 
-  ml_inference_security_group_id = data.terraform_remote_state.ecs.outputs.ml_inference_security_group_id
-  alerting_security_group_id     = data.terraform_remote_state.ecs.outputs.alerting_security_group_id
+  ml_inference_security_group_id = try(data.terraform_remote_state.ecs.outputs.ml_inference_security_group_id, "sg-00000000000000000")
+  alerting_security_group_id     = try(data.terraform_remote_state.ecs.outputs.alerting_security_group_id, "sg-00000000000000000")
 }

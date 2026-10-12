@@ -41,14 +41,14 @@ data "terraform_remote_state" "ecs" {
 module "database" {
   source = "../modules/database"
 
-  project_name        = var.project_name
-  vpc_id              = data.terraform_remote_state.vpc.outputs.vpc_id
-  private_subnet_ids  = data.terraform_remote_state.vpc.outputs.private_subnet_ids
-  db_name             = var.db_name
-  db_username         = var.db_username
+  project_name       = var.project_name
+  vpc_id             = data.terraform_remote_state.vpc.outputs.vpc_id
+  private_subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnet_ids
+  db_name            = var.db_name
+  db_username        = var.db_username
 
-  ecs_tasks_security_group_id   = data.terraform_remote_state.ecs.outputs.ecs_tasks_security_group_id
-  risk_engine_security_group_id = data.terraform_remote_state.ecs.outputs.risk_engine_security_group_id
-  ml_inference_security_group_id = data.terraform_remote_state.ecs.outputs.ml_inference_security_group_id
-  alerting_security_group_id     = data.terraform_remote_state.ecs.outputs.alerting_security_group_id
+  ecs_tasks_security_group_id    = try(data.terraform_remote_state.ecs.outputs.ecs_tasks_security_group_id, "sg-00000000000000000")
+  risk_engine_security_group_id  = try(data.terraform_remote_state.ecs.outputs.risk_engine_security_group_id, "sg-00000000000000000")
+  ml_inference_security_group_id = try(data.terraform_remote_state.ecs.outputs.ml_inference_security_group_id, "sg-00000000000000000")
+  alerting_security_group_id     = try(data.terraform_remote_state.ecs.outputs.alerting_security_group_id, "sg-00000000000000000")
 }
