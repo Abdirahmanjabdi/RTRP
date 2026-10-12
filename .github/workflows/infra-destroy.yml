@@ -25,38 +25,35 @@ jobs:
             exit 1
           fi
 
-  # Order matters here:
-  # - dns first: it depends on ecs, nothing depends on dns.
-  # - messaging before ecs, then ecr, then vpc: ecs and messaging read each
-  #   other's remote state, so whichever gets destroyed second will hit the
-  #   same "Unsupported attribute" error we saw during setup, just in
-  #   reverse. No ordering avoids this cleanly with the current setup — if
-  #   ecs's destroy fails on a missing messaging output, hardcode a
-  #   placeholder over that remote_state reference, apply, then retry.
-  # - cicd is always last: it's the OIDC role this whole workflow runs as.
-  #   bootstrap is never touched here — it's the state backend itself.
-  destroy-dns:
-    name: Destroy dns
-    needs: guard
-    runs-on: ubuntu-latest
-    environment: production-infra
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::026703081738:role/rtrp-github-ci-role
-          aws-region: eu-north-1
-      - working-directory: infra/dns
-        run: |
-          terraform init -input=false
-          terraform destroy -input=false -auto-approve
-
+  # Order matters here, for two separate reasons that both point the same way:
+  #
+  # 1. Remote-state reads. ecs reads messaging/database/cache/alerting's
+  #    outputs (broker endpoint, postgres host, redis host, SNS topic ARN),
+  #    and messaging/database/cache read ecs's outputs right back (security
+  #    group IDs, since M4 widened them for ML Inference and Alerting). Every
+  #    one of those reads is wrapped in try(...) with a placeholder fallback
+  #    (see infra/ecs/backend.tf, infra/messaging/main.tf,
+  #    infra/database/main.tf, infra/cache/main.tf, infra/dns/main.tf), so a
+  #    module whose remote state has already gone empty no longer breaks the
+  #    module reading it. That removes the Terraform-side ordering
+  #    constraint entirely — this pipeline used to deadlock here, the first
+  #    time it was actually run end to end.
+  #
+  # 2. AWS-side physical constraints, which try() can't fix because they're
+  #    not a Terraform problem: postgres-sg, redis-sg, and rabbitmq-sg's
+  #    ingress rules reference ecs's security groups as allowed peers, and
+  #    AWS refuses to delete a security group that's still referenced by
+  #    another one's rule (DependencyViolation). Same story with the ACM
+  #    certificate — it can't be deleted while the ALB's HTTPS listener
+  #    (owned by ecs) still references it. Both resolve the same way:
+  #    destroy messaging/database/cache before ecs, and destroy dns after
+  #    ecs, not before.
+  #
+  # cicd is always last — it's the OIDC role this whole workflow runs as.
+  # bootstrap is never touched here — it's the state backend itself.
   destroy-messaging:
     name: Destroy messaging
-    needs: destroy-dns
+    needs: guard
     runs-on: ubuntu-latest
     environment: production-infra
     steps:
@@ -73,28 +70,9 @@ jobs:
           terraform init -input=false
           terraform destroy -input=false -auto-approve
 
-  destroy-ecs:
-    name: Destroy ecs
-    needs: destroy-messaging
-    runs-on: ubuntu-latest
-    environment: production-infra
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::026703081738:role/rtrp-github-ci-role
-          aws-region: eu-north-1
-      - working-directory: infra/ecs
-        run: |
-          terraform init -input=false
-          terraform destroy -input=false -auto-approve
-
   destroy-database:
     name: Destroy database
-    needs: destroy-ecs
+    needs: guard
     runs-on: ubuntu-latest
     environment: production-infra
     steps:
@@ -110,10 +88,10 @@ jobs:
         run: |
           terraform init -input=false
           terraform destroy -input=false -auto-approve
-          
+
   destroy-cache:
     name: Destroy cache
-    needs: destroy-ecs
+    needs: guard
     runs-on: ubuntu-latest
     environment: production-infra
     steps:
@@ -132,7 +110,7 @@ jobs:
 
   destroy-alerting:
     name: Destroy alerting
-    needs: destroy-ecs
+    needs: guard
     runs-on: ubuntu-latest
     environment: production-infra
     steps:
@@ -147,11 +125,11 @@ jobs:
       - working-directory: infra/alerting
         run: |
           terraform init -input=false
-          terraform destroy -input=false -auto-approve          
+          terraform destroy -input=false -auto-approve
 
   destroy-ecr:
     name: Destroy ecr
-    needs: [destroy-database, destroy-cache, destroy-alerting]
+    needs: guard
     runs-on: ubuntu-latest
     environment: production-infra
     steps:
@@ -163,14 +141,65 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::026703081738:role/rtrp-github-ci-role
           aws-region: eu-north-1
+      - name: Force-delete ECR repositories directly
+        # Belt and suspenders: force_delete = true on the aws_ecr_repository
+        # resources should make `terraform destroy` empty these itself, but
+        # that depends on Terraform's state already tracking force_delete as
+        # true, which a prior apply run without that line in the config can
+        # silently reset. A repository still holding images fails
+        # `terraform destroy` outright (RepositoryNotEmptyException), so
+        # this step removes that failure mode entirely rather than trusting
+        # Terraform state to have the right value.
+        run: |
+          for repo in rtrp-trade-api rtrp-risk-engine rtrp-grafana rtrp-alerting rtrp-ml-inference rtrp-prometheus; do
+            aws ecr delete-repository --repository-name "$repo" --force --region eu-north-1 || true
+          done
       - working-directory: infra/ecr
+        run: |
+          terraform init -input=false
+          terraform destroy -input=false -auto-approve
+
+  destroy-ecs:
+    name: Destroy ecs
+    needs: [destroy-messaging, destroy-database, destroy-cache, destroy-alerting]
+    runs-on: ubuntu-latest
+    environment: production-infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::026703081738:role/rtrp-github-ci-role
+          aws-region: eu-north-1
+      - working-directory: infra/ecs
+        run: |
+          terraform init -input=false
+          terraform destroy -input=false -auto-approve
+
+  destroy-dns:
+    name: Destroy dns
+    needs: destroy-ecs
+    runs-on: ubuntu-latest
+    environment: production-infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::026703081738:role/rtrp-github-ci-role
+          aws-region: eu-north-1
+      - working-directory: infra/dns
         run: |
           terraform init -input=false
           terraform destroy -input=false -auto-approve
 
   destroy-vpc:
     name: Destroy vpc
-    needs: destroy-ecr
+    needs: destroy-dns
     runs-on: ubuntu-latest
     environment: production-infra
     steps:
