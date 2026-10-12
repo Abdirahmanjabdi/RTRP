@@ -266,12 +266,14 @@ down the live environment, so triggering it just for a screenshot would be
 destructive. The confirmation-phrase gate in the workflow file is the
 evidence it's real and wired up rather than untested.
 
-- **`app.yml`** — on push to `main` touching app code: 6 independent jobs
-  (Trade API, Risk Engine, ML Inference, Alerting, Prometheus, Grafana), each
-  building and pushing a sha-tagged image and deploying via
-  `amazon-ecs-render-task-definition` + `amazon-ecs-deploy-task-definition`.
-  Only Trade API gates on a live `/health` check — the others are background
-  consumers with nothing to curl.
+- **`app.yml`** — on push to `main` touching app code: 4 independent jobs
+  (Trade API, Risk Engine, ML Inference, Alerting), each building and pushing
+  a sha-tagged image and deploying via `amazon-ecs-render-task-definition` +
+  `amazon-ecs-deploy-task-definition`. Only Trade API gates on a live
+  `/health` check — the others are background consumers with nothing to
+  curl. Prometheus and Grafana aren't in this pipeline — they're deployed
+  through Terraform with a manually-bumped image tag, since their images
+  change far less often than the application services.
 - **`infra.yml`** — plans on every PR touching `infra/**`; applies on push to
   `main`, behind a manual approval environment (`production-infra`), across
   9 independent Terraform root modules.
